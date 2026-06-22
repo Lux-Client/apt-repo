@@ -63,7 +63,7 @@ jobs:
             --default-key "$GPG_KEY_ID" --clearsign -o InRelease Release
           gpg --armor --export "$GPG_KEY_ID" > lux-archive-keyring.asc
 
-          echo "apt.lux-client.xyz" > CNAME
+          echo "apt.lux.pluginhub.de" > CNAME
           touch .nojekyll
 
       - uses: actions/upload-pages-artifact@v3
