@@ -3,7 +3,7 @@ name: Build & Deploy APT Repository
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"   # stündlich – fängt neue Releases automatisch ein
+    - cron: "0 * * * *"
 
 permissions:
   contents: read
@@ -36,8 +36,13 @@ jobs:
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | gpg --batch --import
           echo "GPG_KEY_ID=${{ secrets.GPG_KEY_ID }}" >> "$GITHUB_ENV"
+          mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent || true
 
       - name: Repository bauen
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           cd public
           dpkg-scanpackages --multiversion . > Packages
@@ -52,8 +57,10 @@ jobs:
             -o APT::FTPArchive::Release::Components="main" \
             release . > Release
 
-          gpg --batch --yes --pinentry-mode loopback --default-key "$GPG_KEY_ID" -abs -o Release.gpg Release
-          gpg --batch --yes --pinentry-mode loopback --default-key "$GPG_KEY_ID" --clearsign -o InRelease Release
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \
+            --default-key "$GPG_KEY_ID" -abs -o Release.gpg Release
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \
+            --default-key "$GPG_KEY_ID" --clearsign -o InRelease Release
           gpg --armor --export "$GPG_KEY_ID" > lux-archive-keyring.asc
 
           echo "apt.lux-client.xyz" > CNAME
